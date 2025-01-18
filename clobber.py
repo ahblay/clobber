@@ -178,7 +178,6 @@ def game_loop():
                 pns.expand(to_expand)
                 if root.proof_number == 0 or root.disproof_number == 0:
                     break
-                counter += 1
             best_node = pns.get_best(root)
             print(best_node.label)
             print(best_node.parent_move)

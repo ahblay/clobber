@@ -53,7 +53,7 @@ class Board:
             return (False, "Cannot move to requested square")
         return (True, "No error")
     
-    def move(self, player, coord, dir):
+    def move(self, player, coord, destination):
         game_player = None 
         if player == self.player_1.id:
             game_player = self.player_1
@@ -63,12 +63,6 @@ class Board:
             oppo = self.player_1
         if not game_player:
             return(f"{player} is not a piece.")
-        
-        directions = {"n": (0, -1),
-                      "e": (1, 0),
-                      "s": (0, 1),
-                      "w": (-1, 0)}
-        destination = tuple(sum(t) for t in zip(coord, directions[dir]))
         valid, error = self.check_validity(game_player, oppo, coord, destination)
         if valid:
             # remove piece from coord and add piece of opposite color to destination
@@ -93,7 +87,21 @@ class Board:
         else:
             return error
 
+def get_destination_coord(origin, dir):
+    directions = {
+        "n": (0, -1),
+        "e": (1, 0),
+        "s": (0, 1),
+        "w": (-1, 0)}
+    destination = tuple(sum(t) for t in zip(origin, directions[dir]))
+    return destination
+
 def game_loop():
+    verbose = input("Pretty print search tree? (y / n)")
+    if verbose == 'y':
+        verbose = True
+    else:
+        verbose = False
     node_label = lambda x: f"player: {x.player}\npn: {x.proof_number}\ndpn: {x.disproof_number}"
     pt = PrettyPrintTree(lambda x: x.children, node_label, lambda x: x.label)
     commands = [
@@ -148,7 +156,8 @@ def game_loop():
                 direction = user[3]
                 col = string.ascii_lowercase.index(piece[0])
                 row = int(piece[1]) - 1
-                success, result = board.move(player, (col, row), direction)
+                destination = get_destination_coord((col, row), direction)
+                success, result = board.move(player, (col, row), destination)
                 if not success:
                     print(result)
                 print(board.__str__())
@@ -162,7 +171,6 @@ def game_loop():
             if user[1] not in ["x", "o"]:
                 print("Unknown player.")
                 continue
-            player = []
             if user[1] == "o":
                 player_pieces = board.player_1.pieces
                 oppo_pieces = board.player_2.pieces
@@ -170,19 +178,23 @@ def game_loop():
                 player_pieces = board.player_2.pieces
                 oppo_pieces = board.player_1.pieces
             root = pn.Node("root", "or", None, player_pieces, oppo_pieces, [])
-            pt(root)
-            print("-" * 100)
+            if verbose:
+                pt(root)
+                print("-" * 100)
             pns = pn.PNSearch()
             while True:
                 to_expand = pns.select(root)
                 pns.expand(to_expand)
+                if verbose:
+                    pt(root)
+                    print("-" * 100)
                 if root.proof_number == 0 or root.disproof_number == 0:
                     break
             best_node = pns.get_best(root)
-            print(best_node.label)
-            print(best_node.parent_move)
-            print(best_node.proof_number)
-            print(best_node.disproof_number)
-
+            piece, destination = best_node.parent_move
+            success, result = board.move(user[1], piece, destination)
+            if not success:
+                print(result)
+            print(board.__str__())
 
 game_loop()

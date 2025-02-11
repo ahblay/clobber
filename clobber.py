@@ -28,6 +28,7 @@ class Board:
         self.height = height
         self.player_1 = players[0]
         self.player_2 = players[1]
+        self.moves = []
 
     def __str__(self):
         result = ["  "]
@@ -75,10 +76,27 @@ class Board:
             game_player.pieces.remove(coord)
             game_player.pieces.append(destination)
             oppo.pieces.remove(destination)
-            
+            self.moves.append((coord, destination))
             return (valid, error)
         else:
             return (valid, error)
+        
+    def undo(self):
+        if not self.moves:
+            return (False, "No moves to undo.")
+        coord, destination = self.moves.pop()
+        if destination in self.player_1.pieces:
+            self.player_1.pieces.remove(destination)
+            self.player_2.pieces.append(destination)
+            self.player_1.pieces.append(coord)
+            return (True, "")
+        elif destination in self.player_2.pieces:
+            self.player_2.pieces.remove(destination)
+            self.player_1.pieces.append(destination)
+            self.player_2.pieces.append(coord)
+            return (True, "")
+        else:
+            return (False, "Cannot identify last move.")
         
     def move_destination(self, origin, destination):
         valid, error = self.check_validity(origin, destination)
@@ -115,7 +133,8 @@ def game_loop():
         "size",
         "play",
         "show",
-        "pn"
+        "pn",
+        "undo"
     ]
     print("Known commands:")
     for command in commands:
@@ -219,6 +238,12 @@ def game_loop():
             success, result = board.move(user[1], piece, destination)
             if not success:
                 print(result)
+            print(board.__str__())
+        if action == "undo":
+            success, message = board.undo()
+            if not success:
+                print(message)
+                continue
             print(board.__str__())
 
 game_loop()

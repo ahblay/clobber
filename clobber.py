@@ -2,12 +2,18 @@ from mcts import Node, MCTS
 import proof_number as pn
 import string
 from PrettyPrint import PrettyPrintTree
+import math
+import time
+import re
 
 class Player:
-    def __init__(self, id, width, height, first):
+    def __init__(self, id, width, height, first, position=[]):
         self.id = id
         self.first = first
-        self.pieces = self.init_pieces(width, height)
+        if position:
+            self.pieces = [(x, y) for y in range(len(position)) for x in range(len(position[0])) if position[y][x] == id]
+        else:
+            self.pieces = self.init_pieces(width, height)
 
     def init_pieces(self, width, height):
         if self.first:
@@ -131,10 +137,23 @@ def game_loop():
                 args = user[1].split("x")
                 width = int(args[0])
                 height = int(args[1])
-                player_1 = Player("o", width, height, True) 
-                player_2 = Player("x", width, height, False) 
-                board = Board(width, height, [player_1, player_2])
-                print(board.__str__())
+                try:
+                    position = list(user[2])
+                    if len(position) != width or height != 1:
+                        print("Position size does not match board size.")
+                        continue
+                    if re.search("[^xo.]+", "".join(position), flags=0):
+                        print("Unrecognized characters in position.")
+                        continue
+                    player_1 = Player("o", width, height, True, position=[position]) 
+                    player_2 = Player("x", width, height, False, position=[position]) 
+                    board = Board(width, height, [player_1, player_2])
+                    print(board.__str__())
+                except:
+                    player_1 = Player("o", width, height, True) 
+                    player_2 = Player("x", width, height, False) 
+                    board = Board(width, height, [player_1, player_2])
+                    print(board.__str__())
             except:
                 print("Unknown argument.")
                 continue
@@ -171,6 +190,10 @@ def game_loop():
             if user[1] not in ["x", "o"]:
                 print("Unknown player.")
                 continue
+            try:
+                search_time = int(user[2])
+            except:
+                search_time = math.inf
             if user[1] == "o":
                 player_pieces = board.player_1.pieces
                 oppo_pieces = board.player_2.pieces
@@ -182,7 +205,8 @@ def game_loop():
                 pt(root)
                 print("-" * 100)
             pns = pn.PNSearch()
-            while True:
+            start = time.time() * 1000
+            while time.time() * 1000 < start + search_time:
                 to_expand = pns.select(root)
                 pns.expand(to_expand)
                 if verbose:

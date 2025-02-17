@@ -15,6 +15,10 @@ class Player:
         else:
             self.pieces = self.init_pieces(width, height)
 
+    def parse_position(self, position):
+        if re.search("[^xo.-\d]+", "".join(position), flags=0):
+            return (False, "Unrecognized characters in position.")
+    
     def init_pieces(self, width, height):
         if self.first:
             pieces = [(x, y) for x in range(width) for y in range(height) if (x + y) % 2 == 0]
@@ -164,6 +168,7 @@ def game_loop():
                     if re.search("[^xo.]+", "".join(position), flags=0):
                         print("Unrecognized characters in position.")
                         continue
+
                     player_1 = Player("o", width, height, True, position=[position]) 
                     player_2 = Player("x", width, height, False, position=[position]) 
                     board = Board(width, height, [player_1, player_2])

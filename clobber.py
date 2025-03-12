@@ -251,4 +251,4 @@ def game_loop():
                 continue
             print(board.__str__())
 
-game_loop()
+#game_loop()

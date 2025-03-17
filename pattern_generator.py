@@ -1,6 +1,7 @@
 import re
 
-def remove_first_pn(s, p, is_prefix=True):
+def remove_first_pn(part_1, part_2, p, is_prefix=True):
+    s = part_1 + part_2
     pattern = f"({re.escape(p)})+"  # Match p repeated as many times as possible
     match = re.search(pattern, s)  # Find the first occurrence
 
@@ -9,10 +10,7 @@ def remove_first_pn(s, p, is_prefix=True):
         after = s[match.end():]  # Everything after the match
         return before, after
     else:
-        if is_prefix:
-            return s, '' 
-        else:
-            return '', s
+        return part_1, part_2
 
 def find_patterns(term, pfx, sfx, depth=0):
     depth += 1
@@ -37,16 +35,16 @@ def find_patterns(term, pfx, sfx, depth=0):
                     candidates = []
                     # p1: oo -> o
                     p1 = right_piece[1:]
-                    candidates.append(remove_first_pn(p1, term))
+                    candidates.append(remove_first_pn(right_piece[1:], "", term))
                     # s1: xx -> xo
                     s1 = left_piece[:-1] + right_piece[0]
-                    candidates.append(remove_first_pn(s1, term, False))
+                    candidates.append(remove_first_pn(left_piece[:-1], right_piece[0], term, False))
                     # p2: oo -> xo
                     p2 = left_piece[-1] + right_piece[1:]
-                    candidates.append(remove_first_pn(p2, term))
+                    candidates.append(remove_first_pn(left_piece[-1], right_piece[1:], term))
                     # s2: xx -> x
                     s2 = left_piece[:-1]
-                    candidates.append(remove_first_pn(s2, term, False))
+                    candidates.append(remove_first_pn("", left_piece[:-1], term, False))
                     #print(candidates)
                     pfxs, sfxs = zip(*candidates)
                     prefixes.extend(pfxs)

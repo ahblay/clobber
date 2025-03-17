@@ -10,6 +10,7 @@ def remove_first_pn(part_1, part_2, p, is_prefix=True):
         after = s[match.end():]  # Everything after the match
         return before, after
     else:
+        # instead of this, maybe see if we can decompose s into two strings that we already have as prefixes and suffixes?
         return part_1, part_2
 
 def find_patterns(term, pfx, sfx, depth=0):
@@ -28,10 +29,10 @@ def find_patterns(term, pfx, sfx, depth=0):
                 # check if right_piece first element is different from leftPiece last element
                 # if so, generate two patterns by deleting from one and switching the other
                 # e.g. xxoo -> xx and oo
-                #print(f"to_test: {to_test}")
+                print(f"to_test: {to_test}")
                 if right_piece[0] != left_piece[-1]:
-                    #print(f"left: {left_piece}")
-                    #print(f"right: {right_piece}")
+                    print(f"left: {left_piece}")
+                    print(f"right: {right_piece}")
                     candidates = []
                     # p1: oo -> o
                     p1 = right_piece[1:]
@@ -45,7 +46,7 @@ def find_patterns(term, pfx, sfx, depth=0):
                     # s2: xx -> x
                     s2 = left_piece[:-1]
                     candidates.append(remove_first_pn("", left_piece[:-1], term, False))
-                    #print(candidates)
+                    print(candidates)
                     pfxs, sfxs = zip(*candidates)
                     prefixes.extend(pfxs)
                     suffixes.extend(sfxs)
@@ -55,7 +56,7 @@ def find_patterns(term, pfx, sfx, depth=0):
     # remove xxx and ooo from prefixes and suffixes
     if set(prefixes) == set(pfx) and set(suffixes) == set(sfx):
         return prefixes, suffixes
-    if depth > 4:
+    if depth > 2:
         return prefixes, suffixes
     prefixes, suffixes = find_patterns(term, prefixes, suffixes, depth)
     return prefixes, suffixes

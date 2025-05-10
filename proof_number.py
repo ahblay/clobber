@@ -16,6 +16,12 @@ class PNSearch:
     def __init__(self):
         pass
 
+    def look_up(self, node):
+        pass
+
+    def update(self, node):
+        pass
+
     def available_moves(self, player, oppo):
         moves = []
         neighbors = [(1, 0), (0, 1), (-1, 0), (0, -1)]

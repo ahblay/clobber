@@ -123,6 +123,7 @@ xxoxoxoxoxx: negative
 xxoxoxoxoxoxx: fuzzy
 xxoxoxoxoxoxoxx: fuzzy
 xxoxoxoxoxoxoxoxx: fuzzy
+xxoxoxoxoxoxoxoxoxx: fuzzy
 
 xx_o
 xxoxo: fuzzy

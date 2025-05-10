@@ -1,7 +1,6 @@
 import re
 
-def remove_first_pn(part_1, part_2, p, is_prefix=True):
-    s = part_1 + part_2
+def remove_first_pn(s, p, original_prefix_suffix, is_prefix=True):
     pattern = f"({re.escape(p)})+"  # Match p repeated as many times as possible
     match = re.search(pattern, s)  # Find the first occurrence
 
@@ -10,8 +9,17 @@ def remove_first_pn(part_1, part_2, p, is_prefix=True):
         after = s[match.end():]  # Everything after the match
         return before, after
     else:
-        # instead of this, maybe see if we can decompose s into two strings that we already have as prefixes and suffixes?
-        return part_1, part_2
+        num_chars = len(original_prefix_suffix)
+        if is_prefix:
+        # split off existing prefix
+            if s[-num_chars:] == original_prefix_suffix:
+                return s[-num_chars:], s[:-num_chars]
+            else: return "", ""
+        else:
+            if s[:num_chars] == original_prefix_suffix:
+                return s[:num_chars], s[num_chars:]
+            else: return "", ""
+        
 
 def find_patterns(term, pfx, sfx, depth=0):
     depth += 1
@@ -29,23 +37,23 @@ def find_patterns(term, pfx, sfx, depth=0):
                 # check if right_piece first element is different from leftPiece last element
                 # if so, generate two patterns by deleting from one and switching the other
                 # e.g. xxoo -> xx and oo
-                print(f"to_test: {to_test}")
+                print(f"to_test: {p}:{term}:{s}")
                 if right_piece[0] != left_piece[-1]:
                     print(f"left: {left_piece}")
                     print(f"right: {right_piece}")
                     candidates = []
                     # p1: oo -> o
                     p1 = right_piece[1:]
-                    candidates.append(remove_first_pn(right_piece[1:], "", term))
+                    candidates.append(remove_first_pn(p1, term, s))
                     # s1: xx -> xo
                     s1 = left_piece[:-1] + right_piece[0]
-                    candidates.append(remove_first_pn(left_piece[:-1], right_piece[0], term, False))
+                    candidates.append(remove_first_pn(s1, term, p, False))
                     # p2: oo -> xo
                     p2 = left_piece[-1] + right_piece[1:]
-                    candidates.append(remove_first_pn(left_piece[-1], right_piece[1:], term))
+                    candidates.append(remove_first_pn(p2, term, s))
                     # s2: xx -> x
                     s2 = left_piece[:-1]
-                    candidates.append(remove_first_pn("", left_piece[:-1], term, False))
+                    candidates.append(remove_first_pn(s2, term, p, False))
                     print(candidates)
                     pfxs, sfxs = zip(*candidates)
                     prefixes.extend(pfxs)
@@ -56,7 +64,7 @@ def find_patterns(term, pfx, sfx, depth=0):
     # remove xxx and ooo from prefixes and suffixes
     if set(prefixes) == set(pfx) and set(suffixes) == set(sfx):
         return prefixes, suffixes
-    if depth > 2:
+    if depth > 4:
         return prefixes, suffixes
     prefixes, suffixes = find_patterns(term, prefixes, suffixes, depth)
     return prefixes, suffixes

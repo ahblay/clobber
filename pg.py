@@ -80,67 +80,8 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
                             children.append(result[0] + "_" + result[1])
                         # if position did not have occurrences of term
                         else: 
-                            # define the original prefix, suffix used to build the pattern
-                            prefix = pattern[0]
-                            suffix = pattern[-1]
-                            # if we are looking at a left subgame
-                            if subgame == 0:
-                                # if that subgame was created by moving left into the original prefix
-                                if i <= len(prefix) and direction == 0:
-                                    # add pattern to the set of small patterns
-                                    small.append(position)
-                                    children.append(position)
-                                    continue
-                                # if subgame was created by moving right out of prefix
-                                if i < len(prefix) and direction == 1:
-                                    # add pattern to the set of small patterns
-                                    small.append(position)
-                                    children.append(position)
-                                    continue
-                                '''
-                                print(f"pattern: {pattern}")
-                                print(f"left and right moves: {positions}")
-                                print(f"position (left and right subgames): {game}")
-                                print(f"specific subgame: {position}")
-                                print(f"new prefix: {prefix}")
-                                print(f"new suffix: {position[len(prefix):]}")
-                                '''
-                                # mark the original prefix
-                                prefixes.append(prefix)
-                                # designate the leftover characters of position as a new suffix
-                                suffixes.append(position[len(prefix):])
-
-                                children.append(prefix + "_" + position[len(prefix):])
-
-                            # if we are looking at a right subgame
-                            if subgame == 1:
-                                # if that subgame was created by moving right into the original suffix
-                                if pattern_string == "xoxoxx":
-                                    print(position)
-                                    print(pattern_string)
-                                    print(suffix)
-                                    print(i)
-                                if i >= len(pattern_string) - len(suffix) - 1 and direction == 1:
-                                    # add pattern to the set of small patterns
-                                    small.append(position)
-                                    children.append(position)
-                                    continue
-                                # if subgame was created by moving a piece left out of original suffix
-                                if i >= len(pattern_string) - len(suffix) and direction == 0:
-                                    # add pattern to the set of small patterns
-                                    small.append(position)
-                                    children.append(position)
-                                    continue
-
-                                # mark the original suffix
-                                suffixes.append(suffix)
-                                # designate the leftover characters of position as a new prefix
-                                if len(suffix) > 0:
-                                    prefixes.append(position[:-len(suffix)])
-                                    children.append(position[:-len(suffix)] + "_" + suffix)
-                                else:
-                                    prefixes.append(position)
-                                    children.append(position + "_" + suffix)
+                            small.append(position)
+                            children.append(position)
 
                     if pattern_string == "xoxoxx":    
                         print(f"children: {children}")
@@ -157,7 +98,7 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
         return sorted(prefixes), sorted(suffixes), sorted(small), trees
     
     # if we exceeded our depth restriction, return
-    if depth > 10:
+    if depth > 1000:
         return prefixes, suffixes, small, trees
     
     # otherwise, keep searching with new set of prefixes, suffixes
@@ -170,7 +111,7 @@ def generate_games(term, prefixes, suffixes):
     combos = list(itertools.product(prefixes, suffixes))
     for combo in combos:
         # each game has the form [prefix, term, term, suffix]
-        result.append([combo[0], term, term, combo[1]])
+        result.append([combo[0], term, term, term, combo[1]])
     return result
 
 def make_move(pattern, index):
@@ -214,10 +155,26 @@ def find_symmetries(term, prefixes, suffixes):
         prefix = pattern[0]
         suffix = pattern[-1]
         pattern_string = "".join(pattern)
+        # remove repeating term in reversed pattern
         result = remove_repeating_term(pattern_string[::-1], term)
         if result:
             if result[0] in prefixes and result[1] in suffixes:
                 symmetries[(prefix, suffix)] = (result[0], result[1])
+            else:
+                print("UH OH")
+                print(f"prefix: {result[0]}, suffix: {result[1]}, prefixes: {prefixes}, suffixes: {suffixes}")
+    return symmetries
+
+def find_symmetries_small(term, prefixes, suffixes, small):
+    symmetries = {}
+    for sm in small:
+        result = remove_repeating_term(sm[::-1], term)
+        if result:
+            if result[0] in prefixes and result[1] in suffixes:
+                symmetries[(sm,)] = (result[0], result[1])
+            else:
+                print("UH OH")
+                print(f"prefix: {result[0]}, suffix: {result[1]}, prefixes: {prefixes}, suffixes: {suffixes}")
     return symmetries
 
 # removes duplicated entries in symmetries dict (i.e. ('', ''): ('o', 'xx') and ('o', 'xx'): ('', ''))
@@ -238,10 +195,12 @@ def restructure_trees(trees):
     result = defaultdict(list)
     for tree in trees:
         for k, v in tree.items():
-            result[k].append(v)
+            if v not in result[k]:
+                result[k].append(v)
     return dict(result)
 
 # TODO: there is some bug here relating to small positions and the children of symmetric positions not being the same
+# TODO: WHAT IS HAPPENING WITH xx_x???
 def consolidate_trees(trees, symmetries):
     print(symmetries)
     reduced_trees = []
@@ -249,13 +208,14 @@ def consolidate_trees(trees, symmetries):
     for tree in trees:
         print(tree)
         for position, children in tree.items():
-            # if the prefix-suffix pair (p, s) is the shorter of its symmetric pair 
-            if tuple(position.split("_")) not in symmetries.keys():
+            # if the prefix-suffix pair (p, s) is the shorter of its symmetric pair
+            ps_pair = tuple(position.split("_"))
+            if ps_pair not in symmetries.keys() or symmetries[ps_pair] == ps_pair:
                 new_children = []
                 # iterate over children of current position
                 for child in children:
                     # if child is not a small position, and it is not the shorter of the symmetric pair
-                    if "_" in child and tuple(child.split("_")) in symmetries.keys():
+                    if tuple(child.split("_")) in symmetries.keys():
                         # get shorter symmetry
                         shortened_child = symmetries[tuple(child.split("_"))]
                         new_child = "_".join(shortened_child)
@@ -263,7 +223,9 @@ def consolidate_trees(trees, symmetries):
                         new_children.append(new_child)
                     else:
                         new_children.append(child)
-                reduced_trees.append({position: new_children})
+                if child == "xxo":
+                    print(f"new_children: {new_children}")
+                reduced_trees.append({position: sorted(new_children)})
     return restructure_trees(reduced_trees)
 
 def print_repeating_patterns(base_term, length):

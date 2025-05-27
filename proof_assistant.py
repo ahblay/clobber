@@ -145,15 +145,26 @@ pattern = "ox"
 # trees is every possible set of two position types reachable by a move from a given position type
 # e.g. [..., {'_': ['_x', 'x_']}, ...]
 prefixes, suffixes, small, trees = pg.find_patterns(pattern, [""], [""], [], {}, 0)
+print(prefixes)
+print(suffixes)
+print(small)
 pp(trees)
 
 # dict matching pairs (prefix, suffix) to pairs (prefix, suffix) that correspond to symmetric games
 # e.g. ('', ''): ('o', 'xx') --> xxoxxo: oxxoxxoxx --> xxoxxoxxo --> _
+# TODO: Include small positions in this dict
 symmetries = pg.find_symmetries(pattern, prefixes, suffixes)
+small_symmetries = pg.find_symmetries_small(pattern, prefixes, suffixes, small)
 
 # removes duplicated entries in symmetries dict (i.e. ('', ''): ('o', 'xx') and ('o', 'xx'): ('', ''))
 # sets keys to be the larger prefix-suffix pair in dict
 consolidated_symmetries = pg.consolidate_symmetries_dict(symmetries)
+
+print("################------------ SYMMETRIES ----------------##############")
+pp(consolidated_symmetries)
+pp(small_symmetries)
+all_syms = consolidated_symmetries | small_symmetries
+pp(all_syms)
 
 # restructures trees to dict and removes trees that are the longer symmetric pair
 # e.g. {
@@ -165,7 +176,8 @@ consolidated_symmetries = pg.consolidate_symmetries_dict(symmetries)
 #       ['_o', 'x_xo']
 #   ],
 #       }
-consolidated_tree = pg.consolidate_trees(trees['x'], consolidated_symmetries)
+consolidated_tree = pg.consolidate_trees(trees['x'], all_syms)
+pp(consolidated_tree)
 
 # all this hypotheses shit is just to test the prover
 hypotheses = {

@@ -28,6 +28,7 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
     small -- a list of all standalone patterns
     depth -- a counter to limit depth of recursion
     """
+
     # copy prefixes, suffixes and small to check if new patterns were found at current depth
     pfxs = prefixes.copy()
     sfxs = suffixes.copy()
@@ -41,53 +42,34 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
     print(f"small: {small}")"""
 
     # get all possible pattern strings
-    # each pattern is of the form [prefix, term, term, suffix]
+    # each pattern is of the form [prefix, term, term, term, suffix]
     patterns = generate_games(term, prefixes, suffixes)
     for pattern in patterns:
+        position = pattern[0] + "_" + pattern[-1]
+ 
         # write pattern as string
         pattern_string = "".join(pattern)
-        # iterate over each piece in pattern
-        for i in range(len(pattern_string)):
-            # determine the positions resulting from moving the ith piece in a pattern left and right
-            # each position is of the form [moved_left, moved_right]
-            # moved_left, moved_right are of the form (left_piece, right_piece)
-            # E.g. pattern_string = "xxOxxo" --> positions = [(xo, xxo), (xx, oxo)]
-            # if a move is not legal, moved_left(right) is None
-            positions, piece = make_move(pattern_string, i)
-            # iterate over moved_left, moved_right
-            # direction = 0 --> piece moved left
-            # direction = 1 --> piece moved right
-            for direction, game in enumerate(positions):
-                # if move was legal
-                if game:
-                    children = []
-                    # iterate over left_piece, right_piece
-                    # subgame = 0 --> left piece
-                    # subgame = 1 --> right piece
-                    for subgame, position in enumerate(game):
-                        # remove occurrences of term
-                        result = remove_repeating_term(position, term)
-                        if pattern_string == "xoxoxx":
-                            print(f"pattern: {pattern}")
-                            print(f"left and right moves: {positions}")
-                            print(f"position (left and right subgames): {game}")
-                            print(f"specific subgame: {position}")
-                            print(f"result: {result}")
-                        # if position had occurrences of term, add characters before occurrence to prefixes, after occurrence to suffixes   
-                        if result:
-                            prefixes.append(result[0])
-                            suffixes.append(result[1])
-                            children.append(result[0] + "_" + result[1])
-                        # if position did not have occurrences of term
-                        else: 
-                            small.append(position)
-                            children.append(position)
 
-                    if pattern_string == "xoxoxx":    
-                        print(f"children: {children}")
-                    binary_tree = {pattern[0] + "_" + pattern[-1]: sorted(children)}
-                    if piece not in trees.keys(): trees[piece] = [] 
-                    if binary_tree not in trees[piece]: trees[piece].append(binary_tree)             
+        p, s, sml, x_children, o_children = evaluate_pattern(pattern_string, term)
+        prefixes.extend(p)
+        suffixes.extend(s)
+        small.extend(sml)
+
+        # update trees with new child positions
+        if position in trees["x"].keys():
+            for child in x_children:
+                if child not in trees["x"][position]:
+                    trees["x"][position].append(child)
+        else:
+            trees["x"][position] = x_children
+
+        if position in trees["o"].keys():
+            for child in o_children:
+                if child not in trees["o"][position]:
+                    trees["o"][position].append(child)
+        else:
+            trees["o"][position] = o_children
+
     # delete duplicate patterns from prefixes, suffixes, and small positions
     prefixes = list(set(prefixes))
     suffixes = list(set(suffixes))
@@ -105,6 +87,88 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
     prefixes, suffixes, small, trees = find_patterns(term, prefixes, suffixes, small, trees, depth)
     return prefixes, suffixes, small, trees
 
+def evaluate_pattern(pattern_string, term):
+    """
+    Take a given pattern string (e.g. xx oxoxox o),
+    and evaluate every position resulting from each legal move.
+    Return all resulting prefix, suffix, or small positions.
+    Return a list of all positional types resulting from all moves.
+    """
+    prefixes = []
+    suffixes = []
+    small = []
+    x_children = []
+    o_children = []
+
+    # iterate over each piece in pattern
+    for i in range(len(pattern_string)):
+        # determine the positions resulting from moving the ith piece in a pattern left and right
+        # each position is of the form [moved_left, moved_right]
+        # moved_left, moved_right are of the form (left_piece, right_piece)
+        # E.g. pattern_string = "xxOxxo" --> positions = [(xo, xxo), (xx, oxo)]
+        # if a move is not legal, moved_left(right) is None
+        positions, piece = make_move(pattern_string, i)
+        # iterate over moved_left, moved_right
+        for move in positions:
+            # if move was legal
+            if move:
+                p, s, sm, children = evaluate_positions(move, term)
+
+                prefixes.extend(p)
+                suffixes.extend(s)
+                small.extend(sm)
+
+                if piece == "x":
+                    x_children.append(children)
+                elif piece == "o":
+                    o_children.append(children)
+                else:
+                    pass
+    return list(set(prefixes)), list(set(suffixes)), list(set(small)), list(set(x_children)), list(set(o_children))
+
+def evaluate_positions(positions, term):
+    """Evaluate the positions (e.g. (xoxo, oox)) resulting from a given move in a pattern string. Return the
+    prefixes, suffixes, small positions, and child positions of this move."""
+    prefixes = []
+    suffixes = []
+    small = []
+    children = []
+    # iterate over components
+    for component in positions:
+        prefix, suffix, s, reduced = reduce_position(component, term)
+        if prefix is not None: prefixes.append(prefix)
+        if suffix is not None: suffixes.append(suffix)
+        if s is not None: small.append(s)
+        # TODO: this catches the case where a move is made at the end of a pattern string
+        # TODO: do we care to include this as None?
+        if reduced is not None: children.append(reduced)
+    return list(set(prefixes)), list(set(suffixes)), list(set(small)), tuple(sorted(set(children)))
+
+def reduce_position(position, term):
+    """Take a position and represent it as a prefix/suffix/reduced, or small/reduced.
+    If position has an instance of the repeating term, then it is given values for prefix/suffix/reduced.
+    If not, and position is non-empty, it is considered small."""
+    prefix = None
+    suffix = None
+    small = None
+    # reduced form replaces repeating term with an underscore (e.g. x oxox oo --> x_oo)
+    reduced = None
+    if position == "":
+        return prefix, suffix, small, reduced
+    # remove occurrences of term
+    result = remove_repeating_term(position, term) 
+    #print(result)
+    if result:
+        prefix = result[0]
+        suffix = result[1]
+        reduced = result[0] + "_" + result[1]
+    # if position did not have occurrences of term
+    # TODO: in this case, try reducing the symmetric position
+    else: 
+        small = position
+        reduced = position
+    return prefix, suffix, small, reduced
+
 def generate_games(term, prefixes, suffixes):
     """Generate all possible games from a list of prefixes, suffixes and a repeating term."""
     result = []
@@ -117,21 +181,15 @@ def generate_games(term, prefixes, suffixes):
 def make_move(pattern, index):
     """Given a pattern string representing a game and a piece index to move, supply the games 
     resulting from moving that piece left and right."""
+    if index not in range(len(pattern)):
+        return [None, None], None
     # piece to move
     piece = pattern[index]
     # everything to the left of piece
     left = pattern[:index]
     # everything to the right of piece
     right = pattern[index + 1:]
-    """
-    if pattern == "oxoxxoxxo":
-        print("%" * 50)
-        print(f"index: {index}")
-        print(f"left: {left}")
-        print(f"piece: {piece}")
-        print(f"right: {right}")
-        print("%" * 50)
-    """
+
     # if there is a piece to the left of the active piece that is a different color
     if left[-1:] and piece != left[-1:]:
         # tuple representing the position after the active piece captures to the left

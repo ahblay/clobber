@@ -132,3 +132,62 @@ def test_evaluate_pattern(pattern_string, term, expected):
     assert len(pg.evaluate_pattern(pattern_string, term)) == len(expected)
     for result, target in zip(pg.evaluate_pattern(pattern_string, term), expected):
         assert set(result) == set(target)
+
+@pytest.mark.parametrize("term, prefixes, suffixes", [
+    ("ox", ['', 'o', 'x', 'xx'], ['', 'o', 'oo', 'x'])
+])
+def test_generate_symmetries(term, prefixes, suffixes):
+    results = pg.generate_symmetries(term, prefixes, suffixes)
+    for k, v in results.items():
+        reversed_pattern = (k[0] + term + term + term + k[1])[::-1]
+        assert pg.remove_repeating_term(reversed_pattern, term) == v
+
+@pytest.mark.parametrize("symmetries, children, expected", [
+    (
+        {
+            ('', 'o'): ('', 'o'),
+            ('', 'oo'): ('o', 'o'),
+            ('o', 'oo'): ('o', 'oo'),
+            ('x', ''): ('x', ''),
+            ('x', 'o'): ('', ''),
+            ('x', 'oo'): ('o', ''),
+            ('x', 'x'): ('xx', ''),
+            ('xx', 'o'): ('', 'x'),
+            ('xx', 'oo'): ('o', 'x'),
+            ('xx', 'x'): ('xx', 'x'),
+            ('o',): ('o',),
+            ('oo',): ('oo',),
+            ('ooo',): ('ooo',),
+            ('x',): ('x',),
+            ('xo',): ('', ''),
+            ('xoo',): ('o', ''),
+            ('xx',): ('xx',),
+            ('xxo',): ('', 'x'),
+            ('xxoo',): ('o', 'x'),
+            ('xxx',): ('xxx',)
+        },
+        [
+            ('x_oo',),
+            ('oo', 'x_'),
+            ('o_o', 'x_'),
+            ('x_oo', 'xo'),
+            ('o_o', 'x'),
+            ('o', 'x_o'),
+            ('x_o', 'xoo')
+        ],
+        [
+            ('o_',),
+            ('oo', 'x_'),
+            ('o_o', 'x_'),
+            ('o_', '_'),
+            ('o_o', 'x'),
+            ('o', '_'),
+            ('_', 'o_')
+        ],
+    )
+])
+def test_replace_symmetries_children(symmetries, children, expected):
+    result = pg.replace_symmetries_children(symmetries, children)
+    print(result)
+    print(expected)
+    assert result == expected

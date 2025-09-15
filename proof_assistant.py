@@ -153,8 +153,8 @@ pp(trees)
 # dict matching pairs (prefix, suffix) to pairs (prefix, suffix) that correspond to symmetric games
 # e.g. ('', ''): ('o', 'xx') --> xxoxxo: oxxoxxoxx --> xxoxxoxxo --> _
 # TODO: Include small positions in this dict
-symmetries = pg.find_symmetries(pattern, prefixes, suffixes)
-small_symmetries = pg.find_symmetries_small(pattern, prefixes, suffixes, small)
+symmetries = pg.generate_symmetries(pattern, prefixes, suffixes)
+small_symmetries = pg.generate_symmetries_small(pattern, prefixes, suffixes, small)
 
 # removes duplicated entries in symmetries dict (i.e. ('', ''): ('o', 'xx') and ('o', 'xx'): ('', ''))
 # sets keys to be the larger prefix-suffix pair in dict

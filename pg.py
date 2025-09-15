@@ -45,10 +45,12 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
     # each pattern is of the form [prefix, term, term, term, suffix]
     patterns = generate_games(term, prefixes, suffixes)
     for pattern in patterns:
-        position = pattern[0] + "_" + pattern[-1]
+        position_label = pattern[0] + "_" + pattern[-1]
  
         # write pattern as string
         pattern_string = "".join(pattern)
+
+        #shortest, position_label = get_shortest_symmetry(pattern_string, term)
 
         p, s, sml, x_children, o_children = evaluate_pattern(pattern_string, term)
         prefixes.extend(p)
@@ -56,19 +58,19 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
         small.extend(sml)
 
         # update trees with new child positions
-        if position in trees["x"].keys():
+        if position_label in trees["x"].keys():
             for child in x_children:
-                if child not in trees["x"][position]:
-                    trees["x"][position].append(child)
+                if child not in trees["x"][position_label]:
+                    trees["x"][position_label].append(child)
         else:
-            trees["x"][position] = x_children
+            trees["x"][position_label] = x_children
 
-        if position in trees["o"].keys():
+        if position_label in trees["o"].keys():
             for child in o_children:
-                if child not in trees["o"][position]:
-                    trees["o"][position].append(child)
+                if child not in trees["o"][position_label]:
+                    trees["o"][position_label].append(child)
         else:
-            trees["o"][position] = o_children
+            trees["o"][position_label] = o_children
 
     # delete duplicate patterns from prefixes, suffixes, and small positions
     prefixes = list(set(prefixes))
@@ -86,6 +88,15 @@ def find_patterns(term, prefixes, suffixes, small, trees, depth):
     # otherwise, keep searching with new set of prefixes, suffixes
     prefixes, suffixes, small, trees = find_patterns(term, prefixes, suffixes, small, trees, depth)
     return prefixes, suffixes, small, trees
+
+def get_shortest_symmetry(pattern, term):
+    """Find the direction of a pattern that limits the size of prefixes and suffixes."""
+    forward = remove_repeating_term(pattern, term)
+    reverse = remove_repeating_term(pattern[::-1], term)
+    if reverse and len(reverse[0] + reverse[1]) < len(forward[0] + forward[1]):
+        return pattern[::-1], "_".join(reverse)
+    else:
+        return pattern, "_".join(forward)
 
 def evaluate_pattern(pattern_string, term):
     """
@@ -135,6 +146,7 @@ def evaluate_positions(positions, term):
     children = []
     # iterate over components
     for component in positions:
+        # TODO: do we need to be careful in the case where component isn't known to have a copy of term in it?
         prefix, suffix, s, reduced = reduce_position(component, term)
         if prefix is not None: prefixes.append(prefix)
         if suffix is not None: suffixes.append(suffix)
@@ -206,7 +218,9 @@ def make_move(pattern, index):
         move_right = None
     return [move_left, move_right], piece
 
-def find_symmetries(term, prefixes, suffixes):
+def generate_symmetries(term, prefixes, suffixes):
+    """Take a set of prefixes, suffixes and a repeating term, and return a dict mapping prefix/suffix pairs
+    to prefix/suffix pairs that are left-right symmetric."""
     symmetries = {}
     patterns = generate_games(term, prefixes, suffixes)
     for pattern in patterns:
@@ -219,11 +233,15 @@ def find_symmetries(term, prefixes, suffixes):
             if result[0] in prefixes and result[1] in suffixes:
                 symmetries[(prefix, suffix)] = (result[0], result[1])
             else:
+                # TODO: should we ever expect to enter this conditional?
                 print("UH OH")
                 print(f"prefix: {result[0]}, suffix: {result[1]}, prefixes: {prefixes}, suffixes: {suffixes}")
+                raise Exception("The prefix/suffix resulting from reversing was not found.")
+        else:
+            symmetries[(prefix, suffix)] = (prefix, suffix)
     return symmetries
 
-def find_symmetries_small(term, prefixes, suffixes, small):
+def generate_symmetries_small(term, prefixes, suffixes, small):
     symmetries = {}
     for sm in small:
         result = remove_repeating_term(sm[::-1], term)
@@ -233,6 +251,9 @@ def find_symmetries_small(term, prefixes, suffixes, small):
             else:
                 print("UH OH")
                 print(f"prefix: {result[0]}, suffix: {result[1]}, prefixes: {prefixes}, suffixes: {suffixes}")
+                raise Exception("The prefix/suffix resulting from reversing was not found.")
+        else:
+            symmetries[(sm,)] = (sm,)
     return symmetries
 
 # removes duplicated entries in symmetries dict (i.e. ('', ''): ('o', 'xx') and ('o', 'xx'): ('', ''))
@@ -285,6 +306,27 @@ def consolidate_trees(trees, symmetries):
                     print(f"new_children: {new_children}")
                 reduced_trees.append({position: sorted(new_children)})
     return restructure_trees(reduced_trees)
+
+# TODO: need to be consistent about whether small positions are actually different from positions with an underscore
+# TODO: is it allowed to replace underscores with the empty string?
+def replace_symmetries_children(symmetries, children):
+    """Take a symmetries dict and a list of child positions (e.g. [("x_o", "_oo"), ...]).
+    For each child, replace it with a smaller symmetry if it exists."""
+    result = []
+    for child in children:
+        updated_child = []
+        for position in child:
+            position_pair = tuple(position.split("_"))
+            if position_pair in symmetries.keys():
+                updated_value = "_".join(symmetries[position_pair])
+                updated_child.append(updated_value)
+            else:
+                updated_child.append(position)
+        updated_child = tuple(sorted(updated_child))
+        if updated_child not in result:
+            result.append(updated_child)
+    return result
+
 
 def print_repeating_patterns(base_term, length):
     prefixes = []

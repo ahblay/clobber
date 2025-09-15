@@ -33,8 +33,20 @@ def get_positions(count_vector, player):
     pass
 
 trees = {"x": {}, "o": {}}
-prefixes, suffixes, small, trees = pg.find_patterns("xxo", [""], [""], [], trees, 0)
+prefixes, suffixes, small, trees = pg.find_patterns("ox", [""], [""], [], trees, 0)
 print(f'prefixes: {prefixes}')
 print(f'suffixes: {suffixes}')
 print(f'small: {small}')
 pp(trees)
+
+symmetries = pg.generate_symmetries("ox", prefixes, suffixes)
+print("symmetries")
+pp(symmetries)
+
+reduced_symmetries = pg.consolidate_symmetries_dict(symmetries)
+print("reduced symmetries")
+pp(reduced_symmetries)
+
+small_symmetries = pg.generate_symmetries_small("ox", prefixes, suffixes, small)
+print("small symmetries")
+pp(small_symmetries)
